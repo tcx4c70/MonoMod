@@ -17,19 +17,14 @@ namespace MonoMod.Core.Utils
         /// </summary>
         public int RelativeToOffset { get; }
 
+        public int ShiftBits { get; }
+
         /// <summary>
         /// Constructs an <see cref="AddressMeaning"/> for the specified <see cref="AddressKind"/>.
         /// </summary>
         /// <param name="kind">The <see cref="AddressKind"/>.</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="kind"/> is invalid -OR- <paramref name="kind"/> is relative.</exception>
-        public AddressMeaning(AddressKind kind)
-        {
-            kind.Validate();
-            if (!kind.IsAbsolute())
-                throw new ArgumentOutOfRangeException(nameof(kind));
-            Kind = kind;
-            RelativeToOffset = 0;
-        }
+        public AddressMeaning(AddressKind kind) : this(kind, 0) { }
 
         /// <summary>
         /// Constructs an <see cref="AddressMeaning"/> for the specified <see cref="AddressKind"/> and relative offset.
@@ -39,32 +34,37 @@ namespace MonoMod.Core.Utils
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="kind"/> is invalid
         /// -OR- <paramref name="kind"/> is absolute
         /// -OR- <paramref name="relativeOffset"/> is less than zero.</exception>
-        public AddressMeaning(AddressKind kind, int relativeOffset)
+        public AddressMeaning(AddressKind kind, int relativeOffset) : this(kind, relativeOffset, 0) { }
+
+        public AddressMeaning(AddressKind kind, int relativeOffset, int shiftBits)
         {
             kind.Validate();
             if (!kind.IsRelative())
                 throw new ArgumentOutOfRangeException(nameof(kind));
             if (relativeOffset < 0)
                 throw new ArgumentOutOfRangeException(nameof(relativeOffset));
+            if (shiftBits < 0)
+                throw new ArgumentOutOfRangeException(nameof(shiftBits));
             Kind = kind;
             RelativeToOffset = relativeOffset;
+            ShiftBits = shiftBits;
         }
 
-        private static unsafe nint DoProcessAddress(AddressKind kind, nint basePtr, int offset, ulong address)
+        private unsafe nint DoProcessAddress(nint basePtr, int offset, ulong address)
         {
             nint addr;
-            if (kind.IsAbsolute())
+            if (Kind.IsAbsolute())
             {
                 addr = (nint)address;
             }
             else
             { // IsRelative
-                var offs = kind.Is32Bit()
+                var offs = Kind.Is32Bit()
                     ? Unsafe.As<ulong, int>(ref address)
                     : Unsafe.As<ulong, long>(ref address);
-                addr = (nint)(basePtr + offset + offs);
+                addr = (nint)(basePtr + offset + (offs << ShiftBits));
             }
-            if (kind.IsIndirect())
+            if (Kind.IsIndirect())
             {
                 addr = *(nint*)addr;
             }
@@ -80,7 +80,7 @@ namespace MonoMod.Core.Utils
         /// <returns>The resolved target address.</returns>
         public nint ProcessAddress(nint basePtr, int offset, ulong address)
         {
-            return DoProcessAddress(Kind, basePtr, offset + RelativeToOffset, address);
+            return DoProcessAddress(basePtr, offset + RelativeToOffset, address);
         }
 
         /// <inheritdoc/>

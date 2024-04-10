@@ -7,7 +7,7 @@ namespace MonoMod.Core.Utils
     /// <summary>
     /// A byte pattern which can be quickly matched, and extract an address.
     /// </summary>
-    public sealed class BytePattern
+    public sealed class BytePattern : IInstructionPattern
     {
 
         private const ushort MaskMask = 0xFF00;
@@ -322,6 +322,24 @@ namespace MonoMod.Core.Utils
             return new(segments, minLength, addrLength);
         }
 
+        public unsafe bool TryMatchAt(nint start, int byteNum, out ulong address, out int length)
+        {
+            if (byteNum < MinLength)
+            {
+                length = 0;
+                address = 0;
+                return false; // the input data is less than this pattern's minimum length, so it can't possibly match
+            }
+
+            var data = new ReadOnlySpan<byte>((void*)start, byteNum);
+            var patternSpan = pattern.Span;
+            // set up address buffer
+            Span<byte> addr = stackalloc byte[sizeof(ulong)];
+            var result = TryMatchAtImpl(patternSpan, data, addr, out length, 0);
+            address = Unsafe.ReadUnaligned<ulong>(ref addr[0]);
+            return result;
+        }
+
         // the address is read in machine byte order
         //   note though, that if there are fewer than 8 bytes of address in the pattern, 
         // the result is whatever it would be with it byte-padded to 8 bytes on the end
@@ -463,6 +481,33 @@ namespace MonoMod.Core.Utils
             NoMatch:
             length = 0;
             return false;
+        }
+
+        public unsafe bool TryFindMatch(nint start, int byteNum, out ulong address, out int offset, out int length)
+        {
+            if (byteNum < MinLength)
+            {
+                length = offset = 0;
+                address = 0;
+                return false; // the input data is less than this pattern's minimum length, so it can't possibly match
+            }
+
+            var patternSpan = pattern.Span;
+
+            var data = new ReadOnlySpan<byte>((void*)start, byteNum);
+            Span<byte> addr = stackalloc byte[sizeof(ulong)];
+            bool result;
+            if (MustMatchAtStart)
+            {
+                offset = 0;
+                result = TryMatchAtImpl(patternSpan, data, addr, out length, 0);
+            }
+            else
+            {
+                result = ScanForNextLiteral(patternSpan, data, addr, out offset, out length, 0);
+            }
+            address = Unsafe.ReadUnaligned<ulong>(ref addr[0]);
+            return result;
         }
 
         /// <summary>

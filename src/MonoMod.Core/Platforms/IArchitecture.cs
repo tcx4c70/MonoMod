@@ -19,9 +19,9 @@ namespace MonoMod.Core.Platforms
         ArchitectureFeature Features { get; }
 
         /// <summary>
-        /// Gets a <see cref="BytePatternCollection"/> containing known method thunks for this architecture. These are used to locate the real method entry point.
+        /// Gets a <see cref="IInstructionPatternCollection"/> containing known method thunks for this architecture. These are used to locate the real method entry point.
         /// </summary>
-        BytePatternCollection KnownMethodThunks { get; }
+        IInstructionPatternCollection KnownMethodThunks { get; }
 
         /// <summary>
         /// Gets the <see cref="IAltEntryFactory"/> for this architecture.

@@ -69,7 +69,7 @@ namespace MonoMod.Core.Platforms
                 ArchitectureKind.x86 => new Architectures.x86Arch(system),
                 ArchitectureKind.x86_64 => new Architectures.x86_64Arch(system),
                 ArchitectureKind.Arm => throw new NotImplementedException(),
-                ArchitectureKind.Arm64 => throw new NotImplementedException(),
+                ArchitectureKind.Arm64 => new Architectures.Arm64Arch(system),
                 var kind => throw new PlatformNotSupportedException($"Architecture kind {kind} not supported"),
             };
         }
@@ -528,10 +528,10 @@ namespace MonoMod.Core.Platforms
 
                 // we still have to limit it like this because otherwise it'll scan and find *other* stubs
                 // if we want to, we could scan for an arch-specific padding pattern and use that to limit instead
-                var span = new ReadOnlySpan<byte>((void*)entry, Math.Min((int)readableLen, archMatchCollection.MaxMinLength));
+                var byteNum = Math.Min((int)readableLen, archMatchCollection.MaxMinLength);
 
                 // TODO: be more limiting with which patterns can be scanned forward and which cannot
-                if (!archMatchCollection.TryFindMatch(span, out var addr, out var match, out var offset, out _))
+                if (!archMatchCollection.TryFindMatch(entry, byteNum, out var addr, out var match, out var offset, out _))
                     break;
 
                 var lastEntry = entry;

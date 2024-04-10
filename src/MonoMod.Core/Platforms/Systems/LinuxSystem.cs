@@ -48,6 +48,14 @@ namespace MonoMod.Core.Platforms.Systems
                     true
                 );
             }
+            else if (PlatformDetection.Architecture == ArchitectureKind.Arm64)
+            {
+                defaultAbi = new Abi(
+                    new[] { SpecialArgumentKind.ReturnBuffer, SpecialArgumentKind.ThisPointer, SpecialArgumentKind.UserArguments },
+                    SystemVABI.ClassifyArm64,
+                    true
+                );
+            }
             else
             {
                 throw new NotImplementedException();

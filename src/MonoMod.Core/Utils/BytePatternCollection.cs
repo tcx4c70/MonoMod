@@ -9,7 +9,7 @@ namespace MonoMod.Core.Utils
     /// <summary>
     /// A collection of <see cref="BytePattern"/>s which can quickly try to match any contained pattern.
     /// </summary>
-    public sealed class BytePatternCollection : IEnumerable<BytePattern>
+    public sealed class BytePatternCollection : IInstructionPatternCollection
     {
 
         private readonly HomogenousPatternCollection[] patternCollections;
@@ -51,7 +51,7 @@ namespace MonoMod.Core.Utils
         /// Gets an enumerator over all of the patterns in this collection.
         /// </summary>
         /// <returns>An enumerator over all patterns in this collection.</returns>
-        public IEnumerator<BytePattern> GetEnumerator()
+        public IEnumerator<IInstructionPattern> GetEnumerator()
         {
             for (var i = 0; i < patternCollections.Length; i++)
             {
@@ -277,6 +277,24 @@ namespace MonoMod.Core.Utils
             }
         }
 
+        public unsafe bool TryMatchAt(nint start, int byteNum, out ulong address, [MaybeNullWhen(false)] out IInstructionPattern matchingPattern, out int length)
+        {
+            if (byteNum < MinLength)
+            {
+                length = 0;
+                address = 0;
+                matchingPattern = null;
+                return false; // the input data is less than this pattern's minimum length, so it can't possibly match
+            }
+
+            var data = new ReadOnlySpan<byte>((void *)start, byteNum);
+            // set up address buffer
+            Span<byte> addr = stackalloc byte[sizeof(ulong)];
+            var result = TryMatchAt(data, addr, out matchingPattern, out length);
+            address = Unsafe.ReadUnaligned<ulong>(ref addr[0]);
+            return result;
+        }
+
         /// <summary>
         /// Tries to match this pattern over the provided span.
         /// </summary>
@@ -290,7 +308,7 @@ namespace MonoMod.Core.Utils
         /// <param name="length">The length of the matched pattern.</param>
         /// <returns><see langword="true"/> if <paramref name="data"/> matched at the start; <see langword="false"/> otherwise.</returns>
         /// <seealso cref="BytePattern.TryMatchAt(ReadOnlySpan{byte}, out ulong, out int)"/>
-        public bool TryMatchAt(ReadOnlySpan<byte> data, out ulong address, [MaybeNullWhen(false)] out BytePattern matchingPattern, out int length)
+        private bool TryMatchAt(ReadOnlySpan<byte> data, out ulong address, [MaybeNullWhen(false)] out IInstructionPattern matchingPattern, out int length)
         {
             if (data.Length < MinLength)
             {
@@ -316,7 +334,7 @@ namespace MonoMod.Core.Utils
         /// <param name="length">The length of the matched pattern.</param>
         /// <returns><see langword="true"/> if <paramref name="data"/> matched at the start; <see langword="false"/> otherwise.</returns>
         /// <seealso cref="BytePattern.TryMatchAt(ReadOnlySpan{byte}, Span{byte}, out int)"/>
-        public bool TryMatchAt(ReadOnlySpan<byte> data, Span<byte> addrBuf, [MaybeNullWhen(false)] out BytePattern matchingPattern, out int length)
+        private bool TryMatchAt(ReadOnlySpan<byte> data, Span<byte> addrBuf, [MaybeNullWhen(false)] out IInstructionPattern matchingPattern, out int length)
         {
             if (data.Length < MinLength)
             {
@@ -367,6 +385,23 @@ namespace MonoMod.Core.Utils
             return false;
         }
 
+        public unsafe bool TryFindMatch(nint start, int byteNum, out ulong address, [MaybeNullWhen(false)] out IInstructionPattern matchingPattern, out int offset, out int length)
+        {
+            if (byteNum < MinLength)
+            {
+                length = offset = 0;
+                address = 0;
+                matchingPattern = null;
+                return false; // the input data is less than this pattern's minimum length, so it can't possibly match
+            }
+
+            var data = new ReadOnlySpan<byte>((void *)start, byteNum);
+            Span<byte> addr = stackalloc byte[sizeof(ulong)];
+            var result = TryFindMatch(data, addr, out matchingPattern, out offset, out length);
+            address = Unsafe.ReadUnaligned<ulong>(ref addr[0]);
+            return result;
+        }
+
         /// <summary>
         /// Tries to find a match of this pattern within the provided span.
         /// </summary>
@@ -381,7 +416,7 @@ namespace MonoMod.Core.Utils
         /// <param name="length">The length of the matched pattern.</param>
         /// <returns><see langword="true"/> if a match was found; <see langword="false"/> otherwise.</returns>
         /// <seealso cref="BytePattern.TryFindMatch(ReadOnlySpan{byte}, out ulong, out int, out int)"/>
-        public bool TryFindMatch(ReadOnlySpan<byte> data, out ulong address, [MaybeNullWhen(false)] out BytePattern matchingPattern, out int offset, out int length)
+        private bool TryFindMatch(ReadOnlySpan<byte> data, out ulong address, [MaybeNullWhen(false)] out IInstructionPattern matchingPattern, out int offset, out int length)
         {
             if (data.Length < MinLength)
             {
@@ -407,7 +442,7 @@ namespace MonoMod.Core.Utils
         /// <param name="length">The length of the matched pattern.</param>
         /// <returns><see langword="true"/> if a match was found; <see langword="false"/> otherwise.</returns>
         /// <seealso cref="BytePattern.TryFindMatch(ReadOnlySpan{byte}, Span{byte}, out int, out int)"/>
-        public bool TryFindMatch(ReadOnlySpan<byte> data, Span<byte> addrBuf, [MaybeNullWhen(false)] out BytePattern matchingPattern, out int offset, out int length)
+        private bool TryFindMatch(ReadOnlySpan<byte> data, Span<byte> addrBuf, [MaybeNullWhen(false)] out IInstructionPattern matchingPattern, out int offset, out int length)
         {
             if (data.Length < MinLength)
             {

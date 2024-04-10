@@ -30,6 +30,12 @@ namespace MonoMod.Core.Platforms.Systems
             return TypeClassification.InRegister;
         }
 
+        public static TypeClassification ClassifyArm64(Type type, bool isReturn)
+        {
+            // TODO
+            return TypeClassification.InRegister;
+        }
+
         private static bool AnyFieldsNotFloat(Type type)
         {
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
